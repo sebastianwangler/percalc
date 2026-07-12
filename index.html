@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Wachstumskurven – Perzentilen-Rechner</title>
+<title>PerCalc</title>
 <!-- Als App zum Home-Bildschirm (iOS/iPadOS/Android) -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Wachstum">
+<meta name="apple-mobile-web-app-title" content="PerCalc">
 <meta name="theme-color" content="#2b3e73">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -38,7 +38,7 @@
   *{box-sizing:border-box}
   body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
   .wrap{max-width:1040px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
-  h1{font-size:24px;margin:0 0 2px}
+  h1{font-size:24px;margin:0 0 18px;text-align:center}
   .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
   .row{display:flex;flex-wrap:wrap;gap:16px}
@@ -85,11 +85,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Wachstumskurven – Perzentilen-Rechner</h1>
-  <p class="sub">Geschlecht wählen · Geburtsdatum eingeben · Alter am Anwendungstag wird berechnet · Grösse / Gewicht eingeben · Position auf den Perzentilen + Wert (Grösse, Gewicht, BMI).</p>
-
-  <div id="dataBanner" class="banner info">Noch keine Referenzdaten geladen – bitte unten deine LMS-/Perzentilen-Datei (CSV oder JSON) laden.</div>
-  <div id="demoBanner" class="banner demo hidden">⚠︎ LAYOUT-DEMO mit FANTASIEWERTEN – NICHT klinisch verwenden. Für echte Perzentilen deine Referenzdaten laden.</div>
+  <h1>Perzentilen-Rechner</h1>
 
   <!-- Eingaben -->
   <div class="card">
@@ -150,6 +146,8 @@
 
   <p class="foot"><b>Quelle der eingebauten Referenzdaten (fest integriert, kein Laden nötig):</b> Grösse, Gewicht &amp; BMI – Eiholzer U, Stephan A, Dubinski I, Fritz C, Noordam C (2025). Updated Swiss Growth References 2025. <i>J Clin Med</i> 14, 5912 (Supplement S1–S6, GAMLSS/LMS). Grösse &amp; Gewicht: Mädchen 0–18 J, Jungen 0–20 J. BMI: 2–18/2–20 J inkl. Übergewicht/Adipositas-Grenzen. Kopfumfang ist nicht enthalten.</p>
   <p class="foot">Perzentile &amp; Z-Score per LMS-Methode: z = ((Messwert/M)^L − 1)/(L·S), Perzentile = Φ(z); zwischen den Alterspunkten wird L, M, S linear interpoliert. Werte wurden koordinatenbasiert aus dem Supplement-PDF extrahiert und gegen die abgedruckten Perzentilen validiert. Dieses Tool ersetzt keine ärztliche Beurteilung.</p>
+
+  <div id="dataBanner" class="banner info" style="margin-top:4px">Referenzdaten werden geladen …</div>
 </div>
 
 <script>

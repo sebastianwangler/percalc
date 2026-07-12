@@ -1,9 +1,9 @@
 {
-  "name": "Wachstumskurven – Perzentilen-Rechner",
-  "short_name": "Wachstum",
+  "name": "PerCalc",
+  "short_name": "PerCalc",
   "lang": "de",
   "description": "Perzentilen-Rechner für Grösse, Gewicht und BMI nach Swiss Growth References 2025 (Eiholzer et al.)",
-  "start_url": "./Wachstumskurven.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
