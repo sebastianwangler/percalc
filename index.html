@@ -138,10 +138,10 @@
     </div>
     <div id="oorBanner" class="banner warn hidden" style="margin-top:12px"></div>
     <div class="chartbar">
-      <span class="hint">Tipp: mit 2 Fingern in die Kurve zoomen &amp; verschieben</span>
+      <span class="hint">2 Finger = zoomen · dann 1 Finger = verschieben · Doppeltipp = zurück</span>
       <button id="zoomReset" class="btn" type="button" style="display:none;padding:5px 11px;font-size:12.5px">⟲ Zoom zurücksetzen</button>
     </div>
-    <div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Perzentilenkurve"></svg></div>
+    <div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 900 610" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Perzentilenkurve"></svg></div>
     <div class="legend">
       <span><span class="sw" style="border-color:var(--pout)"></span>3. / 97. Perzentile</span>
       <span><span class="sw" style="border-color:var(--pmid)"></span>10. / 25. / 75. / 90.</span>
@@ -188,7 +188,7 @@ const MEASURES = {
 };
 const PCTS = [3,10,25,50,75,90,97];
 const PZ   = {3:-1.88079,10:-1.28155,25:-0.67449,50:0,75:0.67449,90:1.28155,97:1.88079};
-const CH   = {W:900,H:520,mL:52,mR:64,mT:20,mB:44};   // Chart-Geometrie (viewBox-Einheiten)
+const CH   = {W:900,H:610,mL:104,mR:72,mT:22,mB:96};   // Chart-Geometrie (viewBox-Einheiten)
 
 /* ---------- Statistik ---------- */
 function erf(x){ // Abramowitz-Stegun 7.1.26
@@ -356,17 +356,21 @@ function renderChart(ai){
   const X=x=>mL+((x-win.x0)/xN)*(W-mL-mR);
   const Y=y=>H-mB-((y-win.y0)/yN)*(H-mT-mB);
 
+  // Schriftgrössen an die tatsächliche Anzeigegrösse anpassen (Ziel ~konstante Lesbarkeit)
+  const scaleU = CH.W/((svg.getBoundingClientRect().width)||CH.W);
+  const FS=(px,lo,hi)=>Math.max(lo,Math.min(hi,Math.round(px*scaleU)));
+  const fAxis=FS(13,13,34), fSmall=FS(11,11,28), fTitle=FS(11.5,12,26);
+
   let s=`<clipPath id="plotclip"><rect x="${mL}" y="${mT}" width="${W-mL-mR}" height="${H-mT-mB}"/></clipPath>`;
-  // Gitter + Achsenbeschriftung (passen sich dem Zoom an)
+  // Gitter + Achsenbeschriftung (passen sich Zoom und Bildschirmgrösse an)
   for(const xt of niceTicks(win.x0,win.x1)){ if(xt.v<win.x0-1e-9||xt.v>win.x1+1e-9)continue; const px=X(xt.v);
     s+=`<line x1="${px}" y1="${mT}" x2="${px}" y2="${H-mB}" stroke="var(--grid)"/>`;
-    s+=`<text x="${px}" y="${H-mB+18}" text-anchor="middle" fill="var(--muted)" font-size="11">${xt.label}</text>`; }
-  for(const yt of niceTicksV(win.y0,win.y1)){ if(yt<win.y0-1e-9||yt>win.y1+1e-9)continue; const py=Y(yt);
+    s+=`<text x="${px}" y="${H-mB+fAxis+6}" text-anchor="middle" fill="var(--muted)" font-size="${fAxis}">${xt.label}</text>`; }
+  for(const yt of niceTicksV(win.y0,win.y1)){ if(yt.v<win.y0-1e-9||yt.v>win.y1+1e-9)continue; const py=Y(yt.v);
     s+=`<line x1="${mL}" y1="${py}" x2="${W-mR}" y2="${py}" stroke="var(--grid)"/>`;
-    s+=`<text x="${mL-8}" y="${py+3.5}" text-anchor="end" fill="var(--muted)" font-size="11">${fmtTick(yt)}</text>`; }
+    s+=`<text x="${mL-8}" y="${py+fAxis*0.35}" text-anchor="end" fill="var(--muted)" font-size="${fAxis}">${yt.label}</text>`; }
   s+=`<rect x="${mL}" y="${mT}" width="${W-mL-mR}" height="${H-mT-mB}" fill="none" stroke="var(--line)"/>`;
-  s+=`<text x="${(mL+W-mR)/2}" y="${H-6}" text-anchor="middle" fill="var(--muted)" font-size="12">Alter (Jahre)</text>`;
-  s+=`<text transform="translate(14 ${(mT+H-mB)/2}) rotate(-90)" text-anchor="middle" fill="var(--muted)" font-size="12">${info.label} (${info.unit})</text>`;
+  s+=`<text x="${(mL+W-mR)/2}" y="${H-mB+fAxis+fTitle+16}" text-anchor="middle" fill="var(--muted)" font-size="${fTitle}">Alter (Jahre)  ·  ${info.label} in ${info.unit}</text>`;
 
   // sichtbaren Bereich fein abtasten
   const vx0=Math.max(win.x0,r.min), vx1=Math.min(win.x1,r.max);
@@ -379,14 +383,14 @@ function renderChart(ai){
     let d=""; for(let i=0;i<sampleXs.length;i++){ const v=pctCurveValue(interpRow(series,sampleXs[i]),p); if(!isFinite(v))continue; d+=(d?"L":"M")+X(sampleXs[i]).toFixed(1)+" "+Y(v).toFixed(1)+" "; }
     if(d) clip+=`<path d="${d}" fill="none" stroke="${colFor(p)}" stroke-width="${wFor(p)}" ${p!==50?'stroke-opacity="0.9"':''}/>`;
     const lv=pctCurveValue(interpRow(series,xEdge),p), ly=Y(lv);
-    if(isFinite(lv)&&ly>=mT&&ly<=H-mB) labels+=`<text x="${W-mR+5}" y="${ly+3.5}" fill="${colFor(p)}" font-size="10.5" font-weight="${p===50?700:500}">${p}.</text>`;
+    if(isFinite(lv)&&ly>=mT&&ly<=H-mB) labels+=`<text x="${W-mR+5}" y="${ly+fSmall*0.34}" fill="${colFor(p)}" font-size="${fSmall}" font-weight="${p===50?700:500}">${p}.</text>`;
   }
   if(measure==='bmi' && interpRow(series,r.min).OW!==undefined){
-    for(const g of [{k:'OW',c:'#e0952b',t:'Übergew.'},{k:'OB',c:'#d8472e',t:'Adip.'}]){
+    for(const g of [{k:'OW',c:'#e0952b',t:'ÜG'},{k:'OB',c:'#d8472e',t:'AD'}]){
       let d=""; for(let i=0;i<sampleXs.length;i++){ const v=interpRow(series,sampleXs[i])[g.k]; if(!isFinite(v))continue; d+=(d?"L":"M")+X(sampleXs[i]).toFixed(1)+" "+Y(v).toFixed(1)+" "; }
       if(d) clip+=`<path d="${d}" fill="none" stroke="${g.c}" stroke-width="1.8" stroke-dasharray="6 3"/>`;
       const lv=interpRow(series,xEdge)[g.k], ly=Y(lv);
-      if(isFinite(lv)&&ly>=mT&&ly<=H-mB) labels+=`<text x="${W-mR+5}" y="${ly+3.5}" fill="${g.c}" font-size="9.5" font-weight="600">${g.t}</text>`;
+      if(isFinite(lv)&&ly>=mT&&ly<=H-mB) labels+=`<text x="${W-mR+5}" y="${ly+fSmall*0.34}" fill="${g.c}" font-size="${fSmall}" font-weight="600">${g.t}</text>`;
     }
   }
   // Messpunkt (nur wenn im sichtbaren Zoom-Fenster)
@@ -398,7 +402,7 @@ function renderChart(ai){
       clip+=`<circle cx="${px}" cy="${py}" r="6" fill="var(--point)" stroke="#fff" stroke-width="1.5"/>`;
       const z=valueToZ(interpRow(series,childX),cv);
       if(z!==null){ const pct=cdf(z)*100; const lx=px<W/2?px+10:px-10, anc=px<W/2?"start":"end";
-        labels+=`<text x="${lx}" y="${py-10}" text-anchor="${anc}" fill="var(--point)" font-size="12" font-weight="700">${trim(cv)} ${info.unit} · ${ordinal(pct)}. P</text>`; }
+        labels+=`<text x="${lx}" y="${py-fSmall*0.7}" text-anchor="${anc}" fill="var(--point)" font-size="${fSmall}" font-weight="700">${trim(cv)} ${info.unit} · ${ordinal(pct)}. P</text>`; }
     }
   } else if(childX!==null && isFinite(cv) && !childInRange){
     oorB.textContent = childX<r.min
@@ -419,10 +423,11 @@ function niceTicks(min,max){
   return out;
 }
 function niceTicksV(min,max){
-  const span=max-min; const raw=span/8; const mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  const span=(max-min)||1; const raw=span/6; const mag=Math.pow(10,Math.floor(Math.log10(raw)));
   const norm=raw/mag; const step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag;
-  const out=[]; let start=Math.ceil(min/step)*step;
-  for(let v=start; v<=max+1e-9; v+=step) out.push(Math.round(v*1e6)/1e6);
+  const dec= step>=1?0:(step>=0.1?1:2);
+  const out=[]; let start=Math.ceil(min/step-1e-9)*step;
+  for(let v=start; v<=max+1e-9; v+=step){ const vv=Math.round(v*1e6)/1e6; out.push({v:vv,label:vv.toFixed(dec)}); }
   return out;
 }
 function fmtTick(v){ return (Math.round(v*100)/100).toString(); }
@@ -535,7 +540,9 @@ for(const id of ["birth","atdate","height","weight"]) document.getElementById(id
 /* ---------- Interaktives Zoomen (2 Finger / Mausrad) ---------- */
 const chartEl=document.getElementById("chart");
 const zoomResetBtn=document.getElementById("zoomReset");
-function updateZoomUI(){ if(zoomResetBtn) zoomResetBtn.style.display = state.view ? "" : "none"; }
+function updateZoomUI(){ if(zoomResetBtn) zoomResetBtn.style.display = state.view ? "" : "none";
+  // gezoomt: 1 Finger verschiebt die Kurve (Seite scrollt nicht) · nicht gezoomt: 1 Finger scrollt die Seite
+  if(chartEl) chartEl.style.touchAction = state.view ? "none" : "pan-y"; }
 function resetZoom(){ state.view=null; renderChart(lastAI); }
 zoomResetBtn.addEventListener("click",resetZoom);
 
@@ -559,30 +566,34 @@ function applyZoom(anchor, newW, newH, curCx, curCy){
   state.view = full ? null : {x0,x1,y0,y1};
   renderChart(lastAI);
 }
-// Touch: 2 Finger = zoomen + verschieben; 1 Finger = Seite scrollen
-let pinch=null;
+// Touch: 2 Finger = zoomen+verschieben · 1 Finger (nur gezoomt) = verschieben · sonst Seite scrollen · Doppeltipp = Reset
+let pinch=null, drag=null, moved=false, lastTap=0;
 function two(t){ return {d:Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY),
   cx:(t[0].clientX+t[1].clientX)/2, cy:(t[0].clientY+t[1].clientY)/2}; }
-chartEl.addEventListener("touchstart",e=>{
-  if(e.touches.length===2 && state.curWin){ e.preventDefault();
+chartEl.addEventListener("touchstart",e=>{ moved=false;
+  if(e.touches.length===2 && state.curWin){ e.preventDefault(); drag=null;
     const m=two(e.touches); pinch={d0:m.d, base:{...state.curWin}, anchor:dataAt(m.cx,m.cy)}; }
+  else if(e.touches.length===1 && state.view && state.curWin){ pinch=null;
+    const t=e.touches[0]; drag={ base:{...state.curWin}, anchor:dataAt(t.clientX,t.clientY) }; }
 },{passive:false});
 chartEl.addEventListener("touchmove",e=>{
-  if(pinch && e.touches.length===2){ e.preventDefault();
+  if(pinch && e.touches.length===2){ e.preventDefault(); moved=true;
     const m=two(e.touches); const scale=pinch.d0/(m.d||1);
-    applyZoom(pinch.anchor,(pinch.base.x1-pinch.base.x0)*scale,(pinch.base.y1-pinch.base.y0)*scale,m.cx,m.cy);
-  }
+    applyZoom(pinch.anchor,(pinch.base.x1-pinch.base.x0)*scale,(pinch.base.y1-pinch.base.y0)*scale,m.cx,m.cy); }
+  else if(drag && e.touches.length===1){ e.preventDefault(); moved=true;
+    const t=e.touches[0]; applyZoom(drag.anchor, drag.base.x1-drag.base.x0, drag.base.y1-drag.base.y0, t.clientX, t.clientY); }
 },{passive:false});
-chartEl.addEventListener("touchend",e=>{ if(e.touches.length<2) pinch=null; });
-// Doppeltipp = zurücksetzen
-let lastTap=0;
-chartEl.addEventListener("touchend",e=>{ if(e.touches.length===0){ const now=Date.now();
-  if(now-lastTap<300 && state.view){ resetZoom(); lastTap=0; } else lastTap=now; } });
+chartEl.addEventListener("touchend",e=>{
+  if(e.touches.length<2) pinch=null;
+  if(e.touches.length===0){ drag=null;
+    if(!moved){ const now=Date.now(); if(now-lastTap<300 && state.view){ resetZoom(); lastTap=0; } else lastTap=now; } }
+});
 // Maus: Rad = zoomen (Desktop)
 chartEl.addEventListener("wheel",e=>{ if(!state.curWin||!state.fullWin)return; e.preventDefault();
   const a=dataAt(e.clientX,e.clientY); const f=e.deltaY<0?0.85:1/0.85;
   applyZoom(a,(state.curWin.x1-state.curWin.x0)*f,(state.curWin.y1-state.curWin.y0)*f,e.clientX,e.clientY);
 },{passive:false});
+let rzT; window.addEventListener("resize",()=>{ clearTimeout(rzT); rzT=setTimeout(()=>renderChart(lastAI),150); });
 
 // Standard: Messdatum = heute
 (function(){ const t=new Date(); const iso=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
