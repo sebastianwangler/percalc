@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wachstumskurven – Perzentilen-Rechner</title>
+<!-- Als App zum Home-Bildschirm (iOS/iPadOS/Android) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Wachstum">
+<meta name="theme-color" content="#2b3e73">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    --bg:#f7f8fb; --card:#ffffff; --ink:#1d2b4a; --muted:#5b6b8c;
+    --line:#d7deea; --grid:#e7ecf5; --accent:#2b3e73; --accent2:#c85a9a;
+    --p50:#3a2f6b; --pmid:#7a6bb0; --pout:#c85a9a; --point:#e2402a;
+    --warn-bg:#fff4e5; --warn-ink:#8a5a00; --warn-line:#f0c98a;
+    --demo-bg:#ffe3e0; --demo-ink:#a11500; --demo-line:#f2a79c;
+    --ok:#1f7a4d;
+    --shadow:0 1px 3px rgba(20,30,60,.08),0 6px 24px rgba(20,30,60,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1420; --card:#171d2b; --ink:#e6ebf5; --muted:#9fb0cf;
+      --line:#2a3346; --grid:#222b3d; --accent:#8fa6e0; --accent2:#e58bbe;
+      --p50:#b3a8e8; --pmid:#9a8fd4; --pout:#e58bbe; --point:#ff6a52;
+      --warn-bg:#3a2a10; --warn-ink:#f0c98a; --warn-line:#6a5220;
+      --demo-bg:#3a1512; --demo-ink:#ffb3a8; --demo-line:#7a2a22;
+      --ok:#57d08c;
+      --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 24px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:1040px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+  h1{font-size:24px;margin:0 0 2px}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+  .row{display:flex;flex-wrap:wrap;gap:16px}
+  .field{display:flex;flex-direction:column;gap:5px;flex:1 1 150px;min-width:130px}
+  label{font-size:12.5px;color:var(--muted);font-weight:600;letter-spacing:.01em}
+  input[type=date],input[type=number]{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+  input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
+  .seg button{font:inherit;font-weight:600;border:0;background:transparent;color:var(--muted);padding:9px 16px;cursor:pointer}
+  .seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+  .agebox{font-size:14px;color:var(--ink);background:var(--bg);border:1px dashed var(--line);border-radius:9px;padding:9px 12px;align-self:end;flex:1 1 200px}
+  .agebox b{color:var(--accent)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .chip{font:inherit;font-size:13.5px;font-weight:600;border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:999px;padding:7px 14px;cursor:pointer}
+  .chip[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .banner{display:flex;gap:10px;align-items:flex-start;border-radius:11px;padding:11px 13px;font-size:13.5px;margin-bottom:14px}
+  .banner.warn{background:var(--warn-bg);color:var(--warn-ink);border:1px solid var(--warn-line)}
+  .banner.demo{background:var(--demo-bg);color:var(--demo-ink);border:1px solid var(--demo-line);font-weight:600}
+  .banner.info{background:var(--card);color:var(--muted);border:1px dashed var(--line)}
+  .chartwrap{width:100%;overflow-x:auto}
+  svg.chart{width:100%;height:auto;display:block;min-width:520px}
+  .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:6px}
+  .res{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:var(--bg)}
+  .res .m{font-size:12.5px;color:var(--muted);font-weight:600}
+  .res .v{font-size:22px;font-weight:700;margin:2px 0}
+  .res .p{font-size:13.5px}
+  .res .p .pct{font-weight:700;color:var(--accent)}
+  .res.oor{opacity:.65}
+  .muted{color:var(--muted)}
+  .filebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  button.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:9px;padding:9px 14px;cursor:pointer}
+  button.btn:hover{border-color:var(--accent)}
+  button.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  details{margin-top:10px}
+  summary{cursor:pointer;font-weight:600;color:var(--accent);font-size:13.5px}
+  pre{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px;overflow-x:auto;font-size:12px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .foot{color:var(--muted);font-size:12px;margin-top:8px}
+  .hidden{display:none}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:12.5px;color:var(--muted);margin-top:6px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:16px;height:0;border-top:2px solid}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Wachstumskurven – Perzentilen-Rechner</h1>
+  <p class="sub">Geschlecht wählen · Geburtsdatum eingeben · Alter am Anwendungstag wird berechnet · Grösse / Gewicht eingeben · Position auf den Perzentilen + Wert (Grösse, Gewicht, BMI).</p>
+
+  <div id="dataBanner" class="banner info">Noch keine Referenzdaten geladen – bitte unten deine LMS-/Perzentilen-Datei (CSV oder JSON) laden.</div>
+  <div id="demoBanner" class="banner demo hidden">⚠︎ LAYOUT-DEMO mit FANTASIEWERTEN – NICHT klinisch verwenden. Für echte Perzentilen deine Referenzdaten laden.</div>
+
+  <!-- Eingaben -->
+  <div class="card">
+    <div class="row" style="align-items:end">
+      <div class="field" style="flex:0 0 auto">
+        <label>Geschlecht</label>
+        <div class="seg" id="sexSeg">
+          <button data-sex="boys"  aria-pressed="true">Junge</button>
+          <button data-sex="girls" aria-pressed="false">Mädchen</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="birth">Geburtsdatum</label>
+        <input type="date" id="birth">
+      </div>
+      <div class="field">
+        <label for="atdate">Anwendungstag (Messdatum)</label>
+        <input type="date" id="atdate">
+      </div>
+      <div class="agebox" id="ageBox">Alter: <b>–</b></div>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <div class="field">
+        <label for="height">Grösse / Länge (cm)</label>
+        <input type="number" id="height" step="0.1" min="0" placeholder="z. B. 92.5" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="weight">Gewicht (kg)</label>
+        <input type="number" id="weight" step="0.01" min="0" placeholder="z. B. 13.4" inputmode="decimal">
+      </div>
+    </div>
+  </div>
+
+  <!-- Ergebnisse -->
+  <div class="card">
+    <div class="results" id="results">
+      <div class="res"><div class="muted">Werte eingeben, um die Perzentilen zu berechnen.</div></div>
+    </div>
+  </div>
+
+  <!-- Diagramm -->
+  <div class="card">
+    <div class="chips" id="measureChips">
+      <button class="chip" data-measure="height" aria-pressed="true">Grösse</button>
+      <button class="chip" data-measure="weight" aria-pressed="false">Gewicht</button>
+      <button class="chip" data-measure="bmi"    aria-pressed="false">BMI</button>
+    </div>
+    <div id="oorBanner" class="banner warn hidden" style="margin-top:12px"></div>
+    <div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Perzentilenkurve"></svg></div>
+    <div class="legend">
+      <span><span class="sw" style="border-color:var(--pout)"></span>3. / 97. Perzentile</span>
+      <span><span class="sw" style="border-color:var(--pmid)"></span>10. / 25. / 75. / 90.</span>
+      <span><span class="sw" style="border-color:var(--p50);border-width:3px"></span>50. Perzentile (Median)</span>
+      <span><span class="sw" style="border-color:var(--point);border-width:3px"></span>Messwert des Kindes</span>
+    </div>
+  </div>
+
+  <p class="foot"><b>Quelle der eingebauten Referenzdaten (fest integriert, kein Laden nötig):</b> Grösse, Gewicht &amp; BMI – Eiholzer U, Stephan A, Dubinski I, Fritz C, Noordam C (2025). Updated Swiss Growth References 2025. <i>J Clin Med</i> 14, 5912 (Supplement S1–S6, GAMLSS/LMS). Grösse &amp; Gewicht: Mädchen 0–18 J, Jungen 0–20 J. BMI: 2–18/2–20 J inkl. Übergewicht/Adipositas-Grenzen. Kopfumfang ist nicht enthalten.</p>
+  <p class="foot">Perzentile &amp; Z-Score per LMS-Methode: z = ((Messwert/M)^L − 1)/(L·S), Perzentile = Φ(z); zwischen den Alterspunkten wird L, M, S linear interpoliert. Werte wurden koordinatenbasiert aus dem Supplement-PDF extrahiert und gegen die abgedruckten Perzentilen validiert. Dieses Tool ersetzt keine ärztliche Beurteilung.</p>
+</div>
+
+<script>
+"use strict";
+/* ================================================================
+   EINGEBAUTE REFERENZDATEN – Swiss Growth References 2025
+   Eiholzer U, Stephan A, Dubinski I, Fritz C, Noordam C (2025)
+   J Clin Med 14, 5912. Supplement Tabellen S1–S6 (GAMLSS/LMS).
+   M = 50. Perzentile; OW = Grenze Übergewicht, OB = Grenze Adipositas.
+   Grösse/Gewicht: Mädchen 0–18 J, Jungen 0–20 J. BMI: 2–18/2–20 J.
+   Werte koordinatenbasiert aus dem Supplement-PDF extrahiert und
+   gegen die abgedruckten Perzentilen validiert (0 Abweichungen).
+   ================================================================ */
+const GROWTH_DATA={"height":{"girls":[{"x":0.0,"L":0.8513,"M":49.732,"S":0.0371},{"x":0.083,"L":0.8513,"M":53.142,"S":0.0371},{"x":0.167,"L":0.8513,"M":56.637,"S":0.0371},{"x":0.25,"L":0.8513,"M":59.782,"S":0.0371},{"x":0.333,"L":0.8513,"M":62.412,"S":0.0371},{"x":0.417,"L":0.8513,"M":64.508,"S":0.0371},{"x":0.5,"L":0.8513,"M":66.226,"S":0.0371},{"x":0.583,"L":0.8513,"M":67.741,"S":0.0371},{"x":0.667,"L":0.8513,"M":69.161,"S":0.0371},{"x":0.75,"L":0.8513,"M":70.544,"S":0.0371},{"x":0.833,"L":0.8513,"M":71.895,"S":0.0371},{"x":0.917,"L":0.8513,"M":73.209,"S":0.0371},{"x":1.0,"L":0.8513,"M":74.48,"S":0.0371},{"x":1.083,"L":0.8513,"M":75.705,"S":0.0371},{"x":1.167,"L":0.8513,"M":76.881,"S":0.0371},{"x":1.25,"L":0.5515,"M":78.029,"S":0.0353},{"x":1.333,"L":0.5515,"M":79.13,"S":0.0353},{"x":1.417,"L":0.5515,"M":80.195,"S":0.0354},{"x":1.5,"L":0.5515,"M":81.225,"S":0.0355},{"x":1.583,"L":0.5515,"M":82.222,"S":0.0356},{"x":1.667,"L":0.5515,"M":83.189,"S":0.0357},{"x":1.75,"L":0.5515,"M":84.126,"S":0.0358},{"x":1.833,"L":0.5515,"M":85.036,"S":0.0359},{"x":1.917,"L":0.5515,"M":85.919,"S":0.036},{"x":2.0,"L":0.5515,"M":86.778,"S":0.0362},{"x":2.5,"L":0.5515,"M":91.499,"S":0.037},{"x":3.0,"L":0.5515,"M":95.678,"S":0.0379},{"x":3.5,"L":0.5515,"M":99.562,"S":0.0389},{"x":4.0,"L":0.5515,"M":103.313,"S":0.0397},{"x":4.5,"L":0.5515,"M":106.906,"S":0.0404},{"x":5.0,"L":0.5515,"M":110.342,"S":0.0411},{"x":5.5,"L":0.5515,"M":113.725,"S":0.0418},{"x":6.0,"L":0.5515,"M":117.082,"S":0.0425},{"x":6.5,"L":0.5515,"M":120.341,"S":0.0431},{"x":7.0,"L":0.5515,"M":123.441,"S":0.0435},{"x":7.5,"L":0.5515,"M":126.343,"S":0.0438},{"x":8.0,"L":0.5515,"M":129.095,"S":0.0439},{"x":8.5,"L":0.5515,"M":131.861,"S":0.0441},{"x":9.0,"L":0.5515,"M":134.759,"S":0.0446},{"x":9.5,"L":0.5515,"M":137.803,"S":0.0455},{"x":10.0,"L":0.5515,"M":140.975,"S":0.0468},{"x":10.5,"L":0.5515,"M":144.184,"S":0.048},{"x":11.0,"L":0.5515,"M":147.328,"S":0.0488},{"x":11.5,"L":0.5515,"M":150.389,"S":0.0486},{"x":12.0,"L":0.5515,"M":153.404,"S":0.0474},{"x":12.5,"L":0.5515,"M":156.306,"S":0.0453},{"x":13.0,"L":0.5515,"M":158.855,"S":0.0429},{"x":13.5,"L":0.5515,"M":160.828,"S":0.041},{"x":14.0,"L":0.5515,"M":162.239,"S":0.0395},{"x":14.5,"L":0.5515,"M":163.198,"S":0.0385},{"x":15.0,"L":0.5515,"M":163.827,"S":0.0379},{"x":15.5,"L":0.5515,"M":164.261,"S":0.0374},{"x":16.0,"L":0.5515,"M":164.625,"S":0.037},{"x":16.5,"L":0.5515,"M":164.967,"S":0.0367},{"x":17.0,"L":0.5515,"M":165.296,"S":0.0364},{"x":17.5,"L":0.5515,"M":165.61,"S":0.0363},{"x":18.0,"L":0.5515,"M":165.876,"S":0.0365}],"boys":[{"x":0.0,"L":0.5192,"M":50.531,"S":0.0376},{"x":0.083,"L":0.5192,"M":54.243,"S":0.0383},{"x":0.167,"L":0.5192,"M":57.94,"S":0.0372},{"x":0.25,"L":0.5192,"M":61.241,"S":0.0361},{"x":0.333,"L":0.5192,"M":63.948,"S":0.0352},{"x":0.417,"L":0.5192,"M":66.089,"S":0.0345},{"x":0.5,"L":0.5192,"M":67.896,"S":0.0342},{"x":0.583,"L":0.5192,"M":69.481,"S":0.0341},{"x":0.667,"L":0.5192,"M":70.922,"S":0.0341},{"x":0.75,"L":0.5192,"M":72.281,"S":0.0342},{"x":0.833,"L":0.5192,"M":73.59,"S":0.0344},{"x":0.917,"L":0.5192,"M":74.848,"S":0.0346},{"x":1.0,"L":0.5192,"M":76.048,"S":0.0348},{"x":1.083,"L":0.5192,"M":77.195,"S":0.0351},{"x":1.167,"L":0.5192,"M":78.304,"S":0.0354},{"x":1.25,"L":0.462,"M":79.469,"S":0.0355},{"x":1.333,"L":0.462,"M":80.56,"S":0.0357},{"x":1.417,"L":0.462,"M":81.615,"S":0.0358},{"x":1.5,"L":0.462,"M":82.635,"S":0.0359},{"x":1.583,"L":0.462,"M":83.623,"S":0.0361},{"x":1.667,"L":0.462,"M":84.579,"S":0.0362},{"x":1.75,"L":0.462,"M":85.506,"S":0.0363},{"x":1.833,"L":0.462,"M":86.405,"S":0.0365},{"x":1.917,"L":0.462,"M":87.277,"S":0.0366},{"x":2.0,"L":0.462,"M":88.123,"S":0.0367},{"x":2.5,"L":0.462,"M":92.764,"S":0.0373},{"x":3.0,"L":0.462,"M":96.895,"S":0.0378},{"x":3.5,"L":0.462,"M":100.745,"S":0.0382},{"x":4.0,"L":0.462,"M":104.441,"S":0.0387},{"x":4.5,"L":0.462,"M":107.995,"S":0.0394},{"x":5.0,"L":0.462,"M":111.404,"S":0.0403},{"x":5.5,"L":0.462,"M":114.722,"S":0.0413},{"x":6.0,"L":0.462,"M":117.987,"S":0.0422},{"x":6.5,"L":0.462,"M":121.176,"S":0.0427},{"x":7.0,"L":0.462,"M":124.265,"S":0.0429},{"x":7.5,"L":0.462,"M":127.259,"S":0.0428},{"x":8.0,"L":0.462,"M":130.165,"S":0.0426},{"x":8.5,"L":0.462,"M":132.984,"S":0.0423},{"x":9.0,"L":0.462,"M":135.718,"S":0.0422},{"x":9.5,"L":0.462,"M":138.39,"S":0.0422},{"x":10.0,"L":0.462,"M":141.032,"S":0.0426},{"x":10.5,"L":0.462,"M":143.697,"S":0.0434},{"x":11.0,"L":0.462,"M":146.454,"S":0.0445},{"x":11.5,"L":0.462,"M":149.369,"S":0.0458},{"x":12.0,"L":0.462,"M":152.487,"S":0.0472},{"x":12.5,"L":0.462,"M":155.84,"S":0.0482},{"x":13.0,"L":0.462,"M":159.352,"S":0.0487},{"x":13.5,"L":0.462,"M":162.853,"S":0.0486},{"x":14.0,"L":0.462,"M":166.184,"S":0.0478},{"x":14.5,"L":0.462,"M":169.216,"S":0.0466},{"x":15.0,"L":0.462,"M":171.833,"S":0.0449},{"x":15.5,"L":0.462,"M":173.969,"S":0.0431},{"x":16.0,"L":0.462,"M":175.62,"S":0.0413},{"x":16.5,"L":0.462,"M":176.795,"S":0.0398},{"x":17.0,"L":0.462,"M":177.563,"S":0.0385},{"x":17.5,"L":0.462,"M":178.019,"S":0.0375},{"x":18.0,"L":0.462,"M":178.254,"S":0.0369},{"x":18.5,"L":0.462,"M":178.346,"S":0.0367},{"x":19.0,"L":0.462,"M":178.371,"S":0.0368},{"x":19.5,"L":0.462,"M":178.381,"S":0.0371},{"x":20.0,"L":0.462,"M":178.383,"S":0.0377}]},"weight":{"girls":[{"x":0.0,"L":0.3668,"M":3.357,"S":0.1189},{"x":0.083,"L":0.3342,"M":4.157,"S":0.1179},{"x":0.167,"L":0.3042,"M":4.954,"S":0.117},{"x":0.25,"L":0.2753,"M":5.705,"S":0.1161},{"x":0.333,"L":0.2471,"M":6.367,"S":0.1153},{"x":0.417,"L":0.2192,"M":6.91,"S":0.1144},{"x":0.5,"L":0.1917,"M":7.331,"S":0.1135},{"x":0.583,"L":0.1645,"M":7.675,"S":0.1127},{"x":0.667,"L":0.1375,"M":8.0,"S":0.1119},{"x":0.75,"L":0.1108,"M":8.332,"S":0.1111},{"x":0.833,"L":0.0842,"M":8.661,"S":0.1105},{"x":0.917,"L":0.0578,"M":8.972,"S":0.1099},{"x":1.0,"L":0.0316,"M":9.256,"S":0.1095},{"x":1.083,"L":0.0055,"M":9.516,"S":0.1092},{"x":1.167,"L":-0.0205,"M":9.751,"S":0.109},{"x":1.25,"L":-0.0464,"M":9.972,"S":0.1089},{"x":1.333,"L":-0.0721,"M":10.197,"S":0.109},{"x":1.417,"L":-0.0978,"M":10.441,"S":0.1091},{"x":1.5,"L":-0.1234,"M":10.703,"S":0.1093},{"x":1.583,"L":-0.1488,"M":10.966,"S":0.1096},{"x":1.667,"L":-0.1742,"M":11.21,"S":0.11},{"x":1.75,"L":-0.1995,"M":11.432,"S":0.1105},{"x":1.833,"L":-0.2247,"M":11.635,"S":0.111},{"x":1.917,"L":-0.2499,"M":11.828,"S":0.1115},{"x":2.0,"L":-0.275,"M":12.011,"S":0.112},{"x":2.5,"L":-0.4242,"M":13.107,"S":0.1156},{"x":3.0,"L":-0.5716,"M":14.342,"S":0.1192},{"x":3.5,"L":-0.7174,"M":15.001,"S":0.1226},{"x":4.0,"L":-0.8619,"M":16.294,"S":0.1261},{"x":4.5,"L":-0.9372,"M":17.403,"S":0.1304},{"x":5.0,"L":-0.991,"M":18.535,"S":0.1361},{"x":5.5,"L":-1.0325,"M":19.713,"S":0.1432},{"x":6.0,"L":-1.0599,"M":20.934,"S":0.1516},{"x":6.5,"L":-1.0695,"M":22.199,"S":0.1601},{"x":7.0,"L":-1.0581,"M":23.511,"S":0.1673},{"x":7.5,"L":-1.027,"M":24.89,"S":0.1734},{"x":8.0,"L":-0.9797,"M":26.365,"S":0.1788},{"x":8.5,"L":-0.9218,"M":27.967,"S":0.1839},{"x":9.0,"L":-0.8583,"M":29.721,"S":0.1892},{"x":9.5,"L":-0.7923,"M":31.64,"S":0.1944},{"x":10.0,"L":-0.7234,"M":33.716,"S":0.1993},{"x":10.5,"L":-0.6494,"M":35.924,"S":0.2032},{"x":11.0,"L":-0.5785,"M":38.242,"S":0.2061},{"x":11.5,"L":-0.5234,"M":40.644,"S":0.2076},{"x":12.0,"L":-0.497,"M":43.102,"S":0.2072},{"x":12.5,"L":-0.5073,"M":45.566,"S":0.2044},{"x":13.0,"L":-0.5506,"M":47.943,"S":0.1994},{"x":13.5,"L":-0.6204,"M":50.129,"S":0.1925},{"x":14.0,"L":-0.7092,"M":52.033,"S":0.1844},{"x":14.5,"L":-0.807,"M":53.612,"S":0.1759},{"x":15.0,"L":-0.9022,"M":54.874,"S":0.1682},{"x":15.5,"L":-0.9859,"M":55.872,"S":0.1621},{"x":16.0,"L":-1.0512,"M":56.686,"S":0.1583},{"x":16.5,"L":-1.0934,"M":57.38,"S":0.1563},{"x":17.0,"L":-1.1087,"M":58.009,"S":0.1555},{"x":17.5,"L":-1.095,"M":58.597,"S":0.1552},{"x":18.0,"L":-1.0536,"M":59.158,"S":0.1549}],"boys":[{"x":0.0,"L":0.4026,"M":3.495,"S":0.1163},{"x":0.083,"L":0.6612,"M":4.403,"S":0.1244},{"x":0.167,"L":0.6304,"M":5.411,"S":0.121},{"x":0.25,"L":0.5535,"M":6.225,"S":0.1176},{"x":0.333,"L":0.4575,"M":6.876,"S":0.1149},{"x":0.417,"L":0.3555,"M":7.397,"S":0.1129},{"x":0.5,"L":0.2555,"M":7.839,"S":0.1114},{"x":0.583,"L":0.1612,"M":8.229,"S":0.1104},{"x":0.667,"L":0.0738,"M":8.58,"S":0.1097},{"x":0.75,"L":-0.006,"M":8.901,"S":0.1094},{"x":0.833,"L":-0.0785,"M":9.206,"S":0.1092},{"x":0.917,"L":-0.1439,"M":9.504,"S":0.1093},{"x":1.0,"L":-0.2026,"M":9.795,"S":0.1095},{"x":1.083,"L":-0.2551,"M":10.073,"S":0.1098},{"x":1.167,"L":-0.3019,"M":10.334,"S":0.1101},{"x":1.25,"L":-0.3434,"M":10.581,"S":0.1105},{"x":1.333,"L":-0.3804,"M":10.817,"S":0.111},{"x":1.417,"L":-0.4134,"M":11.048,"S":0.1114},{"x":1.5,"L":-0.4427,"M":11.275,"S":0.1119},{"x":1.583,"L":-0.4688,"M":11.501,"S":0.1124},{"x":1.667,"L":-0.4922,"M":11.724,"S":0.1129},{"x":1.75,"L":-0.513,"M":11.944,"S":0.1134},{"x":1.833,"L":-0.5316,"M":12.162,"S":0.1139},{"x":1.917,"L":-0.5484,"M":12.376,"S":0.1144},{"x":2.0,"L":-0.5635,"M":12.585,"S":0.1148},{"x":2.5,"L":-0.6297,"M":13.681,"S":0.1176},{"x":3.0,"L":-0.6743,"M":14.7,"S":0.1202},{"x":3.5,"L":-0.7139,"M":15.739,"S":0.1222},{"x":4.0,"L":-0.7529,"M":16.853,"S":0.1237},{"x":4.5,"L":-0.8631,"M":17.972,"S":0.1289},{"x":5.0,"L":-0.9556,"M":19.104,"S":0.134},{"x":5.5,"L":-1.0372,"M":20.269,"S":0.1395},{"x":6.0,"L":-1.1048,"M":21.466,"S":0.1454},{"x":6.5,"L":-1.1562,"M":22.699,"S":0.1513},{"x":7.0,"L":-1.1902,"M":23.976,"S":0.1573},{"x":7.5,"L":-1.2073,"M":25.312,"S":0.1632},{"x":8.0,"L":-1.2091,"M":26.726,"S":0.1689},{"x":8.5,"L":-1.197,"M":28.233,"S":0.1743},{"x":9.0,"L":-1.1729,"M":29.847,"S":0.1795},{"x":9.5,"L":-1.1392,"M":31.575,"S":0.1843},{"x":10.0,"L":-1.0983,"M":33.422,"S":0.1888},{"x":10.5,"L":-1.052,"M":35.39,"S":0.1929},{"x":11.0,"L":-1.0018,"M":37.486,"S":0.1965},{"x":11.5,"L":-0.9493,"M":39.724,"S":0.1994},{"x":12.0,"L":-0.8973,"M":42.121,"S":0.2015},{"x":12.5,"L":-0.8504,"M":44.69,"S":0.2024},{"x":13.0,"L":-0.8131,"M":47.423,"S":0.2021},{"x":13.5,"L":-0.7887,"M":50.279,"S":0.2004},{"x":14.0,"L":-0.7791,"M":53.192,"S":0.1976},{"x":14.5,"L":-0.7846,"M":56.07,"S":0.1937},{"x":15.0,"L":-0.8033,"M":58.831,"S":0.1892},{"x":15.5,"L":-0.8322,"M":61.399,"S":0.1843},{"x":16.0,"L":-0.8669,"M":63.716,"S":0.1795},{"x":16.5,"L":-0.9029,"M":65.741,"S":0.1748},{"x":17.0,"L":-0.9371,"M":67.466,"S":0.1707},{"x":17.5,"L":-0.9668,"M":68.901,"S":0.1673},{"x":18.0,"L":-0.9908,"M":70.071,"S":0.1647},{"x":18.5,"L":-1.0085,"M":71.013,"S":0.163},{"x":19.0,"L":-1.0214,"M":71.767,"S":0.1622},{"x":19.5,"L":-1.0309,"M":72.382,"S":0.1621},{"x":20.0,"L":-1.0391,"M":72.911,"S":0.1624}]},"bmi":{"girls":[{"x":2.0,"L":-0.7942,"M":15.949,"S":0.0831,"OW":17.4,"OB":18.9},{"x":2.5,"L":-0.9929,"M":15.768,"S":0.0841,"OW":17.2,"OB":18.8},{"x":3.0,"L":-1.1792,"M":15.608,"S":0.0853,"OW":17.1,"OB":18.7},{"x":3.5,"L":-1.3464,"M":15.474,"S":0.087,"OW":17.0,"OB":18.6},{"x":4.0,"L":-1.4922,"M":15.371,"S":0.0892,"OW":16.9,"OB":18.7},{"x":4.5,"L":-1.619,"M":15.303,"S":0.0923,"OW":16.9,"OB":18.8},{"x":5.0,"L":-1.7287,"M":15.273,"S":0.0961,"OW":17.0,"OB":19.0},{"x":5.5,"L":-1.822,"M":15.278,"S":0.1007,"OW":17.1,"OB":19.3},{"x":6.0,"L":-1.8929,"M":15.315,"S":0.1059,"OW":17.3,"OB":19.7},{"x":6.5,"L":-1.9298,"M":15.378,"S":0.1116,"OW":17.5,"OB":20.2},{"x":7.0,"L":-1.9274,"M":15.47,"S":0.1173,"OW":17.7,"OB":20.7},{"x":7.5,"L":-1.8875,"M":15.598,"S":0.1229,"OW":18.0,"OB":21.2},{"x":8.0,"L":-1.8176,"M":15.768,"S":0.1283,"OW":18.3,"OB":21.7},{"x":8.5,"L":-1.7304,"M":15.984,"S":0.1334,"OW":18.6,"OB":22.3},{"x":9.0,"L":-1.6381,"M":16.244,"S":0.1382,"OW":19.0,"OB":22.9},{"x":9.5,"L":-1.5525,"M":16.543,"S":0.1426,"OW":19.5,"OB":23.5},{"x":10.0,"L":-1.4776,"M":16.868,"S":0.1465,"OW":19.9,"OB":24.1},{"x":10.5,"L":-1.412,"M":17.204,"S":0.1498,"OW":20.4,"OB":24.7},{"x":11.0,"L":-1.3574,"M":17.544,"S":0.1525,"OW":20.8,"OB":25.3},{"x":11.5,"L":-1.3175,"M":17.894,"S":0.1545,"OW":21.3,"OB":25.9},{"x":12.0,"L":-1.2962,"M":18.259,"S":0.1557,"OW":21.8,"OB":26.5},{"x":12.5,"L":-1.2968,"M":18.643,"S":0.156,"OW":22.2,"OB":27.1},{"x":13.0,"L":-1.3201,"M":19.036,"S":0.1554,"OW":22.7,"OB":27.6},{"x":13.5,"L":-1.3645,"M":19.421,"S":0.1539,"OW":23.1,"OB":28.2},{"x":14.0,"L":-1.4252,"M":19.78,"S":0.1518,"OW":23.5,"OB":28.6},{"x":14.5,"L":-1.4947,"M":20.096,"S":0.1491,"OW":23.8,"OB":29.0},{"x":15.0,"L":-1.5641,"M":20.366,"S":0.1464,"OW":24.1,"OB":29.3},{"x":15.5,"L":-1.6239,"M":20.595,"S":0.1437,"OW":24.3,"OB":29.5},{"x":16.0,"L":-1.6707,"M":20.792,"S":0.1414,"OW":24.5,"OB":29.7},{"x":16.5,"L":-1.7037,"M":20.965,"S":0.1394,"OW":24.6,"OB":29.8},{"x":17.0,"L":-1.7224,"M":21.124,"S":0.1377,"OW":24.8,"OB":29.9},{"x":17.5,"L":-1.7267,"M":21.274,"S":0.1362,"OW":24.9,"OB":29.9},{"x":18.0,"L":-1.72,"M":21.422,"S":0.1347,"OW":25.0,"OB":30.0}],"boys":[{"x":2.0,"L":-1.5861,"M":16.145,"S":0.0849,"OW":17.4,"OB":19.0},{"x":2.5,"L":-1.5861,"M":15.923,"S":0.0844,"OW":17.1,"OB":18.7},{"x":3.0,"L":-1.5861,"M":15.739,"S":0.0845,"OW":16.9,"OB":18.5},{"x":3.5,"L":-1.5861,"M":15.604,"S":0.0854,"OW":16.8,"OB":18.4},{"x":4.0,"L":-1.5861,"M":15.52,"S":0.0871,"OW":16.7,"OB":18.4},{"x":4.5,"L":-1.5861,"M":15.481,"S":0.0895,"OW":16.7,"OB":18.4},{"x":5.0,"L":-1.5861,"M":15.469,"S":0.0928,"OW":16.8,"OB":18.6},{"x":5.5,"L":-1.5861,"M":15.473,"S":0.0967,"OW":16.8,"OB":18.7},{"x":6.0,"L":-1.5861,"M":15.494,"S":0.1012,"OW":16.9,"OB":19.0},{"x":6.5,"L":-1.5861,"M":15.534,"S":0.1061,"OW":17.0,"OB":19.2},{"x":7.0,"L":-1.5861,"M":15.6,"S":0.1111,"OW":17.2,"OB":19.5},{"x":7.5,"L":-1.5861,"M":15.699,"S":0.1162,"OW":17.4,"OB":19.9},{"x":8.0,"L":-1.5861,"M":15.846,"S":0.1211,"OW":17.6,"OB":20.4},{"x":8.5,"L":-1.5861,"M":16.04,"S":0.1258,"OW":17.9,"OB":20.9},{"x":9.0,"L":-1.5861,"M":16.279,"S":0.1304,"OW":18.3,"OB":21.4},{"x":9.5,"L":-1.5861,"M":16.552,"S":0.1346,"OW":18.7,"OB":22.0},{"x":10.0,"L":-1.5861,"M":16.843,"S":0.1385,"OW":19.1,"OB":22.6},{"x":10.5,"L":-1.5861,"M":17.139,"S":0.142,"OW":19.5,"OB":23.3},{"x":11.0,"L":-1.5861,"M":17.429,"S":0.145,"OW":19.8,"OB":23.9},{"x":11.5,"L":-1.5861,"M":17.712,"S":0.1476,"OW":20.2,"OB":24.4},{"x":12.0,"L":-1.5861,"M":17.995,"S":0.1496,"OW":20.6,"OB":25.0},{"x":12.5,"L":-1.5861,"M":18.288,"S":0.151,"OW":20.9,"OB":25.5},{"x":13.0,"L":-1.5861,"M":18.598,"S":0.1518,"OW":21.3,"OB":26.0},{"x":13.5,"L":-1.5861,"M":18.932,"S":0.1521,"OW":21.7,"OB":26.4},{"x":14.0,"L":-1.5861,"M":19.283,"S":0.1519,"OW":22.1,"OB":26.9},{"x":14.5,"L":-1.5861,"M":19.643,"S":0.1513,"OW":22.5,"OB":27.4},{"x":15.0,"L":-1.5861,"M":20.005,"S":0.1504,"OW":22.9,"OB":27.8},{"x":15.5,"L":-1.5861,"M":20.366,"S":0.1493,"OW":23.3,"OB":28.2},{"x":16.0,"L":-1.5861,"M":20.72,"S":0.1481,"OW":23.7,"OB":28.6},{"x":16.5,"L":-1.5861,"M":21.062,"S":0.147,"OW":24.0,"OB":29.0},{"x":17.0,"L":-1.5861,"M":21.387,"S":0.1459,"OW":24.4,"OB":29.4},{"x":17.5,"L":-1.5861,"M":21.691,"S":0.145,"OW":24.7,"OB":29.7},{"x":18.0,"L":-1.5861,"M":21.97,"S":0.1444,"OW":25.0,"OB":30.0},{"x":18.5,"L":-1.5861,"M":22.223,"S":0.1439,"OW":25.0,"OB":30.0},{"x":19.0,"L":-1.5861,"M":22.45,"S":0.1438,"OW":25.0,"OB":30.0},{"x":19.5,"L":-1.5861,"M":22.655,"S":0.1439,"OW":25.0,"OB":30.0},{"x":20.0,"L":-1.5861,"M":22.842,"S":0.1441,"OW":25.0,"OB":30.0}]}};
+
+/* ---------- Zustand ---------- */
+const state = {
+  sex: "boys",
+  measure: "height",
+  data: null,          // { height:{boys:[{x,L,M,S}|{x,p3..}],girls:[]}, ... }
+  isDemo: false,
+};
+
+const MEASURES = {
+  height:  {label:"Grösse",     unit:"cm", from:"age"},
+  weight:  {label:"Gewicht",    unit:"kg", from:"age"},
+  bmi:     {label:"BMI",        unit:"kg/m²", from:"age"},
+};
+const PCTS = [3,10,25,50,75,90,97];
+const PZ   = {3:-1.88079,10:-1.28155,25:-0.67449,50:0,75:0.67449,90:1.28155,97:1.88079};
+
+/* ---------- Statistik ---------- */
+function erf(x){ // Abramowitz-Stegun 7.1.26
+  const s=x<0?-1:1; x=Math.abs(x);
+  const t=1/(1+0.3275911*x);
+  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+  return s*y;
+}
+const cdf = z => 0.5*(1+erf(z/Math.SQRT2));
+function invNorm(p){ // Acklam
+  if(p<=0)return -Infinity; if(p>=1)return Infinity;
+  const a=[-39.6968302866538,220.946098424521,-275.928510446969,138.357751867269,-30.6647980661472,2.50662827745924];
+  const b=[-54.4760987982241,161.585836858041,-155.698979859887,66.8013118877197,-13.2806815528857];
+  const c=[-0.00778489400243029,-0.322396458041136,-2.40075827716184,-2.54973253934373,4.37466414146497,2.93816398269878];
+  const d=[0.00778469570904146,0.32246712907004,2.445134137143,3.75440866190742];
+  const pl=0.02425,ph=1-pl;let q,r;
+  if(p<pl){q=Math.sqrt(-2*Math.log(p));return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  if(p<=ph){q=p-0.5;r=q*q;return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);}
+  q=Math.sqrt(-2*Math.log(1-p));return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+
+/* ---------- Alter ---------- */
+function ageInfo(birth, at){
+  if(!birth||!at) return null;
+  const b=new Date(birth), a=new Date(at);
+  if(isNaN(b)||isNaN(a)) return null;
+  const days=(a-b)/86400000;
+  if(days<0) return {invalid:true};
+  const years=days/365.25;
+  // Kalender-Jahre/Monate/Tage
+  let y=a.getFullYear()-b.getFullYear();
+  let m=a.getMonth()-b.getMonth();
+  let d=a.getDate()-b.getDate();
+  if(d<0){ m--; const pm=new Date(a.getFullYear(),a.getMonth(),0).getDate(); d+=pm; }
+  if(m<0){ y--; m+=12; }
+  const totalMonths=days/30.4375;
+  return {years, days, y, m, d, totalMonths};
+}
+function fmtAge(ai){
+  if(!ai) return "–";
+  if(ai.invalid) return "Messdatum liegt vor dem Geburtsdatum";
+  const parts=[];
+  if(ai.y>0) parts.push(ai.y+" J");
+  parts.push(ai.m+" Mt");
+  if(ai.y<2) parts.push(ai.d+" T");
+  return parts.join(" ")+"  ("+ai.years.toFixed(2)+" Jahre)";
+}
+
+/* ---------- Interpolation & Perzentile ---------- */
+function seriesFor(measure,sex){
+  const d=state.data; if(!d||!d[measure]||!d[measure][sex]) return null;
+  const s=d[measure][sex];
+  return (s&&s.length)?s:null;
+}
+function range(series){ return {min:series[0].x, max:series[series.length-1].x}; }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function interpRow(series,x){
+  const n=series.length;
+  if(x<=series[0].x) return {...series[0], clampedLow:x<series[0].x};
+  if(x>=series[n-1].x) return {...series[n-1], clampedHigh:x>series[n-1].x};
+  let i=0; while(i<n-1 && series[i+1].x<x) i++;
+  const a=series[i], b=series[i+1], t=(x-a.x)/(b.x-a.x);
+  const out={x};
+  if(a.L!==undefined&&b.L!==undefined){ out.L=lerp(a.L,b.L,t); out.M=lerp(a.M,b.M,t); out.S=lerp(a.S,b.S,t); }
+  if(a.p!==undefined&&b.p!==undefined){ out.p={}; for(const k of PCTS) out.p[k]=lerp(a.p[k],b.p[k],t); }
+  if(a.OW!==undefined&&b.OW!==undefined){ out.OW=lerp(a.OW,b.OW,t); out.OB=lerp(a.OB,b.OB,t); }
+  return out;
+}
+// Wert -> z  (LMS bevorzugt, sonst Perzentil-Interpolation im z-Raum)
+function valueToZ(row,value){
+  if(row.L!==undefined && row.M!==undefined && row.S!==undefined){
+    const {L,M,S}=row;
+    return Math.abs(L)<1e-7 ? Math.log(value/M)/S : (Math.pow(value/M,L)-1)/(L*S);
+  }
+  if(row.p){
+    const xs=PCTS.map(k=>row.p[k]); const zs=PCTS.map(k=>PZ[k]);
+    if(value<=xs[0]) { const s=(zs[1]-zs[0])/(xs[1]-xs[0]); return zs[0]+s*(value-xs[0]); }
+    for(let i=0;i<xs.length-1;i++){ if(value<=xs[i+1]){ const t=(value-xs[i])/(xs[i+1]-xs[i]); return lerp(zs[i],zs[i+1],t); } }
+    const n=xs.length; const s=(zs[n-1]-zs[n-2])/(xs[n-1]-xs[n-2]); return zs[n-1]+s*(value-xs[n-1]);
+  }
+  return null;
+}
+// z -> Wert (für Kurvenpunkte)
+function zToValue(row,z){
+  if(row.L!==undefined){ const {L,M,S}=row; return Math.abs(L)<1e-7 ? M*Math.exp(S*z) : M*Math.pow(1+L*S*z,1/L); }
+  return null;
+}
+function pctCurveValue(row,pct){
+  if(row.p) return row.p[pct];
+  return zToValue(row,PZ[pct]);
+}
+
+/* ---------- Messwerte ---------- */
+function currentMeasurements(){
+  const h=parseFloat(document.getElementById("height").value);
+  const w=parseFloat(document.getElementById("weight").value);
+  let bmi=NaN;
+  if(isFinite(h)&&h>0&&isFinite(w)&&w>0) bmi=w/Math.pow(h/100,2);
+  return {height:isFinite(h)?h:NaN, weight:isFinite(w)?w:NaN, bmi:isFinite(bmi)?bmi:NaN};
+}
+
+/* ---------- Rendering: Ergebnisse ---------- */
+function renderResults(ai){
+  const box=document.getElementById("results");
+  const meas=currentMeasurements();
+  if(!state.data){ box.innerHTML='<div class="res"><div class="muted">Bitte zuerst Referenzdaten laden.</div></div>'; return; }
+  if(!ai||ai.invalid){ box.innerHTML='<div class="res"><div class="muted">Bitte gültiges Geburts- und Messdatum eingeben.</div></div>'; return; }
+  const cards=[];
+  for(const key of Object.keys(MEASURES)){
+    const val=meas[key];
+    if(!isFinite(val)) continue;
+    const series=seriesFor(key,state.sex);
+    const info=MEASURES[key];
+    if(!series){ cards.push(card(info,val,null,"keine Referenzdaten")); continue; }
+    const r=range(series);
+    const below = ai.years<r.min-1e-9, above = ai.years>r.max+1e-9;
+    if(below||above){ const note = below? `Referenz erst ab ${r.min} J` : `Referenz nur bis ${r.max} J`; cards.push(card(info,val,null,note)); continue; }
+    const row=interpRow(series, ai.years);
+    const z=valueToZ(row,val);
+    if(z===null){ cards.push(card(info,val,null,"nicht berechenbar")); continue; }
+    const pct=cdf(z)*100;
+    cards.push(card(info,val,{z,pct,oor:false},null));
+  }
+  box.innerHTML = cards.length? cards.join("") : '<div class="res"><div class="muted">Grösse oder Gewicht eingeben.</div></div>';
+}
+function ordinal(p){ return p.toFixed(1).replace(".",","); }
+function card(info,val,res,note){
+  const unit=info.unit;
+  let body;
+  if(res){
+    body=`<div class="p"><span class="pct">${ordinal(res.pct)}. Perzentile</span> · z = ${res.z>=0?"+":""}${res.z.toFixed(2)}</div>`;
+    return `<div class="res"><div class="m">${info.label}</div><div class="v">${trim(val)} <span class="muted" style="font-size:13px">${unit}</span></div>${body}</div>`;
+  }
+  return `<div class="res"><div class="m">${info.label}</div><div class="v">${trim(val)} <span class="muted" style="font-size:13px">${unit}</span></div><div class="p muted">${note||""}</div></div>`;
+}
+function trim(v){ return (Math.round(v*100)/100).toString().replace(".",","); }
+
+/* ---------- Rendering: Chart ---------- */
+function renderChart(ai){
+  const svg=document.getElementById("chart");
+  const W=900,H=520, mL=52,mR=64,mT=20,mB=44;
+  const measure=state.measure, info=MEASURES[measure];
+  const oorB=document.getElementById("oorBanner");
+  oorB.classList.add("hidden");
+  const series=seriesFor(measure,state.sex);
+  if(!series){ svg.innerHTML=txt(W/2,H/2,"Keine Referenzdaten für "+info.label+" ("+(state.sex==="boys"?"Junge":"Mädchen")+")","middle","var(--muted)",14); return; }
+  const r=range(series);
+  // y-Range aus 3.- und 97.-Kurve über Altersbereich
+  let ymin=Infinity,ymax=-Infinity;
+  const N=160;
+  const sampleXs=[];
+  for(let i=0;i<=N;i++){ const x=lerp(r.min,r.max,i/N); sampleXs.push(x); const row=interpRow(series,x);
+    const lo=pctCurveValue(row,3), hi=pctCurveValue(row,97);
+    if(isFinite(lo))ymin=Math.min(ymin,lo); if(isFinite(hi))ymax=Math.max(ymax,hi);
+    if(measure==='bmi'&&isFinite(row.OB))ymax=Math.max(ymax,row.OB);
+  }
+  const meas=currentMeasurements(); const cv=meas[measure];
+  let childInRange=false, childX=null;
+  if(ai&&!ai.invalid&&isFinite(cv)){ childX=ai.years; if(isFinite(cv)){ ymin=Math.min(ymin,cv); ymax=Math.max(ymax,cv);} childInRange = childX>=r.min-1e-9 && childX<=r.max+1e-9; }
+  const pad=(ymax-ymin)*0.06||1; ymin-=pad; ymax+=pad;
+
+  const xN=r.max-r.min, yN=ymax-ymin;
+  const X=x=>mL+( (x-r.min)/xN )*(W-mL-mR);
+  const Y=y=>H-mB-((y-ymin)/yN)*(H-mT-mB);
+
+  let s="";
+  // Achsen-Gitter
+  const xticks=niceTicks(r.min,r.max,measure);
+  const yticks=niceTicksV(ymin,ymax);
+  for(const xt of xticks){ const px=X(xt.v); s+=`<line x1="${px}" y1="${mT}" x2="${px}" y2="${H-mB}" stroke="var(--grid)"/>`;
+    s+=`<text x="${px}" y="${H-mB+18}" text-anchor="middle" fill="var(--muted)" font-size="11">${xt.label}</text>`; }
+  for(const yt of yticks){ const py=Y(yt); s+=`<line x1="${mL}" y1="${py}" x2="${W-mR}" y2="${py}" stroke="var(--grid)"/>`;
+    s+=`<text x="${mL-8}" y="${py+3.5}" text-anchor="end" fill="var(--muted)" font-size="11">${fmtTick(yt)}</text>`; }
+  s+=`<rect x="${mL}" y="${mT}" width="${W-mL-mR}" height="${H-mT-mB}" fill="none" stroke="var(--line)"/>`;
+  // Achsentitel
+  s+=`<text x="${(mL+W-mR)/2}" y="${H-6}" text-anchor="middle" fill="var(--muted)" font-size="12">${measure==='height'||measure==='weight'||measure==='bmi'||measure==='headcirc'?'Alter (Jahre)':'x'}</text>`;
+  s+=`<text transform="translate(14 ${(mT+H-mB)/2}) rotate(-90)" text-anchor="middle" fill="var(--muted)" font-size="12">${info.label} (${info.unit})</text>`;
+
+  // Perzentilenkurven
+  const colFor=p=>(p===50?"var(--p50)":(p===3||p===97?"var(--pout)":"var(--pmid)"));
+  const wFor=p=>(p===50?2.6:(p===3||p===97?1.8:1.2));
+  for(const p of PCTS){
+    let d=""; for(let i=0;i<sampleXs.length;i++){ const row=interpRow(series,sampleXs[i]); const v=pctCurveValue(row,p); if(!isFinite(v))continue; d+=(d?"L":"M")+X(sampleXs[i]).toFixed(1)+" "+Y(v).toFixed(1)+" "; }
+    s+=`<path d="${d}" fill="none" stroke="${colFor(p)}" stroke-width="${wFor(p)}" ${p!==50?'stroke-opacity="0.9"':''}/>`;
+    // Label rechts
+    const lastRow=interpRow(series,r.max); const lv=pctCurveValue(lastRow,p);
+    if(isFinite(lv)) s+=`<text x="${W-mR+5}" y="${Y(lv)+3.5}" fill="${colFor(p)}" font-size="10.5" font-weight="${p===50?700:500}">${p}.</text>`;
+  }
+
+  // BMI-Grenzlinien Übergewicht / Adipositas (aus Supplement OW/OB)
+  if(measure==='bmi' && interpRow(series,r.min).OW!==undefined){
+    for(const g of [{k:'OW',c:'#e0952b',t:'Übergewicht'},{k:'OB',c:'#d8472e',t:'Adipositas'}]){
+      let d=""; for(let i=0;i<sampleXs.length;i++){ const row=interpRow(series,sampleXs[i]); const v=row[g.k]; if(!isFinite(v))continue; d+=(d?"L":"M")+X(sampleXs[i]).toFixed(1)+" "+Y(v).toFixed(1)+" "; }
+      s+=`<path d="${d}" fill="none" stroke="${g.c}" stroke-width="1.8" stroke-dasharray="6 3"/>`;
+      const lastRow=interpRow(series,r.max); const lv=lastRow[g.k];
+      if(isFinite(lv)) s+=`<text x="${W-mR+5}" y="${Y(lv)+3.5}" fill="${g.c}" font-size="9.5" font-weight="600">${g.t}</text>`;
+    }
+  }
+
+  // Messpunkt
+  if(childX!==null && isFinite(cv)){
+    if(childInRange){
+      const px=X(childX), py=Y(cv);
+      s+=`<line x1="${px}" y1="${mT}" x2="${px}" y2="${H-mB}" stroke="var(--point)" stroke-width="1" stroke-dasharray="3 3" stroke-opacity=".55"/>`;
+      s+=`<line x1="${mL}" y1="${py}" x2="${W-mR}" y2="${py}" stroke="var(--point)" stroke-width="1" stroke-dasharray="3 3" stroke-opacity=".55"/>`;
+      s+=`<circle cx="${px}" cy="${py}" r="6" fill="var(--point)" stroke="#fff" stroke-width="1.5"/>`;
+      const row=interpRow(series,childX); const z=valueToZ(row,cv);
+      if(z!==null){ const pct=cdf(z)*100;
+        const lx=px<W/2?px+10:px-10, anc=px<W/2?"start":"end";
+        s+=`<text x="${lx}" y="${py-10}" text-anchor="${anc}" fill="var(--point)" font-size="12" font-weight="700">${trim(cv)} ${info.unit} · ${ordinal(pct)}. P</text>`;
+      }
+    } else {
+      oorB.textContent = childX<r.min
+        ? `${info.label}-Referenz erst ab ${r.min} Jahren – für dieses Alter (${childX.toFixed(2)} J) gibt es keine Kurve, daher kein Messpunkt.`
+        : `${info.label}-Referenz nur bis ${r.max} Jahre – für dieses Alter (${childX.toFixed(2)} J) gibt es keine Kurve, daher kein Messpunkt.`;
+      oorB.classList.remove("hidden");
+    }
+  }
+  svg.innerHTML=s;
+}
+function txt(x,y,t,anchor,fill,size){ return `<text x="${x}" y="${y}" text-anchor="${anchor}" fill="${fill}" font-size="${size}">${t}</text>`; }
+function niceTicks(min,max,measure){
+  const span=max-min; let step= span<=6?1: span<=12?2: span<=20?2:5;
+  const out=[]; let start=Math.ceil(min/step)*step;
+  for(let v=start; v<=max+1e-9; v+=step) out.push({v, label:(Math.round(v*100)/100).toString()});
+  if(!out.length||out[0].v>min+1e-9) out.unshift({v:min,label:(Math.round(min*100)/100).toString()});
+  return out;
+}
+function niceTicksV(min,max){
+  const span=max-min; const raw=span/8; const mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  const norm=raw/mag; const step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag;
+  const out=[]; let start=Math.ceil(min/step)*step;
+  for(let v=start; v<=max+1e-9; v+=step) out.push(Math.round(v*1e6)/1e6);
+  return out;
+}
+function fmtTick(v){ return (Math.round(v*100)/100).toString(); }
+
+/* niceTicks liefert Objekte {v,label}; X() erwartet Zahl -> anpassen */
+/* (Vereinfachung: nur v & label nutzen) */
+
+/* ---------- Orchestrierung ---------- */
+function refresh(){
+  const birth=document.getElementById("birth").value;
+  const at=document.getElementById("atdate").value;
+  const ai=ageInfo(birth,at);
+  document.getElementById("ageBox").innerHTML="Alter: <b>"+ (ai?fmtAge(ai):"–") +"</b>";
+  renderResults(ai);
+  renderChart(ai);
+}
+
+/* ---------- Daten laden ---------- */
+const ALIAS_M={height:"height","grösse":"height",groesse:"height","größe":"height","länge":"height",laenge:"height",length:"height",
+  weight:"weight",gewicht:"weight",bmi:"bmi",headcirc:"headcirc",kopfumfang:"headcirc",hc:"headcirc",oc:"headcirc"};
+const ALIAS_S={boys:"boys",junge:"boys",jungen:"boys",m:"boys",male:"boys","männlich":"boys",
+  girls:"girls","mädchen":"girls",maedchen:"girls",w:"girls",f:"girls",female:"girls","weiblich":"girls"};
+function normNum(s){ if(typeof s==="number")return s; if(s==null)return NaN; s=(""+s).trim().replace(/\s/g,""); if(s.indexOf(",")>-1&&s.indexOf(".")===-1)s=s.replace(",","."); return parseFloat(s); }
+
+function buildData(rows){
+  const out={};
+  for(const raw of rows){
+    const measure=ALIAS_M[(""+raw.measure).trim().toLowerCase()];
+    const sex=ALIAS_S[(""+raw.sex).trim().toLowerCase()];
+    if(!measure||!sex) continue;
+    const x=normNum(raw.x);
+    if(!isFinite(x)) continue;
+    const rec={x};
+    const L=normNum(raw.L), M=normNum(raw.M), S=normNum(raw.S);
+    if(isFinite(L)&&isFinite(M)&&isFinite(S)){ rec.L=L; rec.M=M; rec.S=S; }
+    const p={}; let hasP=true;
+    for(const k of PCTS){ const v=normNum(raw["p"+k]); if(isFinite(v))p[k]=v; else hasP=false; }
+    if(hasP) rec.p=p;
+    if(rec.L===undefined && rec.p===undefined) continue;
+    out[measure]=out[measure]||{boys:[],girls:[]};
+    out[measure][sex].push(rec);
+  }
+  for(const m in out) for(const sx in out[m]) out[m][sx].sort((a,b)=>a.x-b.x);
+  // leere Masse entfernen
+  for(const m in out){ if(!out[m].boys.length&&!out[m].girls.length) delete out[m]; }
+  return out;
+}
+function parseCSV(text){
+  text=text.replace(/^﻿/,"");
+  const lines=text.split(/\r?\n/).filter(l=>l.trim().length && !l.trim().startsWith("#"));
+  if(!lines.length) return [];
+  const delim=(lines[0].split(";").length>lines[0].split(",").length)?";":",";
+  const head=lines[0].split(delim).map(h=>h.trim());
+  const rows=[];
+  for(let i=1;i<lines.length;i++){ const cells=lines[i].split(delim); const o={}; head.forEach((h,j)=>o[h]=cells[j]); rows.push(o); }
+  return rows;
+}
+function loadFromText(text, name){
+  let rows;
+  try{
+    if(/^\s*[{\[]/.test(text)){ const j=JSON.parse(text); rows=Array.isArray(j)?j:(j.rows||[]); }
+    else rows=parseCSV(text);
+  }catch(e){ setStatus("Fehler beim Lesen: "+e.message,true); return; }
+  const loaded=buildData(rows);
+  const measures=Object.keys(loaded);
+  if(!measures.length){ setStatus("Keine gültigen Zeilen erkannt – Spalten prüfen (measure,sex,x + L,M,S oder p3..p97).",true); return; }
+  state.data=Object.assign({}, state.data||{}, loaded);   // ergänzt/ersetzt einzelne Masse
+  state.isDemo=false;
+  const all=Object.keys(state.data);
+  document.getElementById("dataBanner").className="banner info";
+  document.getElementById("dataBanner").innerHTML="✓ Aktive Masse: "+all.map(m=>(MEASURES[m]?MEASURES[m].label:m)).join(", ")+". Zusätzlich geladen aus "+(name||"Datei")+": "+measures.map(m=>(MEASURES[m]?MEASURES[m].label:m)).join(", ")+".";
+  document.getElementById("dataBanner").style.color="var(--ok)";
+  setStatus((name||"Datei")+" – "+rows.length+" Zeilen, "+measures.length+" Masse ergänzt",false);
+  refresh();
+}
+function setStatus(msg,err){ const el=document.getElementById("fileStatus"); if(!el)return; el.textContent=msg; el.style.color=err?"var(--point)":"var(--muted)"; }
+
+/* ---------- Layout-Demo (klar als Fantasie markiert) ---------- */
+function loadDemo(){
+  // Synthetische, grob WHO-nahe Fantasiewerte – NUR um das Layout zu zeigen.
+  const rows=[];
+  function push(measure,sex,x,M,cv,L){ rows.push({measure,sex,x,L:L,M:M,S:cv}); }
+  const yrs=[0,0.25,0.5,0.75,1,1.5,2,3,4,5,6,8,10,12,14,16,18];
+  const base={ // [M bei 0, M bei 18] grob interpoliert – reine Fantasie
+    height:{boys:[50,178],girls:[49,166]}, weight:{boys:[3.4,68],girls:[3.3,58]},
+    bmi:{boys:[13.4,22],girls:[13.3,21]}, headcirc:{boys:[35,57],girls:[34,56]} };
+  for(const measure of Object.keys(base)) for(const sex of ["boys","girls"]){
+    const [a,b]=base[measure][sex];
+    for(const x of yrs){ const t=Math.sqrt(x/18); const M= measure==='bmi'? a+(x<6?-1.6:(x-6)/12*8) : a+(b-a)*t;
+      rows.push({measure,sex,x,L:1,M:Math.round(M*100)/100,S:0.11}); }
+  }
+  const data=buildData(rows);
+  state.data=data; state.isDemo=true;
+  document.getElementById("demoBanner").classList.remove("hidden");
+  document.getElementById("dataBanner").className="banner info";
+  document.getElementById("dataBanner").innerHTML="Layout-Demo aktiv – dies sind KEINE echten Perzentilen.";
+  document.getElementById("dataBanner").style.color="";
+  setStatus("Layout-Demo (Fantasiewerte)",true);
+  refresh();
+}
+
+/* ---------- Events ---------- */
+document.getElementById("sexSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return;
+  state.sex=b.dataset.sex; [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed", x===b)); refresh(); });
+document.getElementById("measureChips").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return;
+  state.measure=b.dataset.measure; [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed", x===b)); refresh(); });
+for(const id of ["birth","atdate","height","weight"]) document.getElementById(id).addEventListener("input",refresh);
+
+// Standard: Messdatum = heute
+(function(){ const t=new Date(); const iso=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+  document.getElementById("atdate").value=iso; })();
+
+// Eingebaute Referenzdaten (Swiss Growth References 2025) automatisch laden
+(function(){
+  state.data=GROWTH_DATA; state.isDemo=false;
+  const b=document.getElementById("dataBanner");
+  b.className="banner info"; b.style.color="var(--ok)";
+  b.innerHTML="✓ Referenzdaten eingebaut: <b>Swiss Growth References 2025</b> (Eiholzer et al., J Clin Med 2025, 14, 5912) – Grösse, Gewicht &amp; BMI, Jungen &amp; Mädchen.";
+  setStatus("eingebaute Daten aktiv (Eiholzer 2025)",false);
+})();
+refresh();
+</script>
+</body>
+</html>

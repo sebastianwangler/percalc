@@ -1,0 +1,17 @@
+{
+  "name": "Wachstumskurven – Perzentilen-Rechner",
+  "short_name": "Wachstum",
+  "lang": "de",
+  "description": "Perzentilen-Rechner für Grösse, Gewicht und BMI nach Swiss Growth References 2025 (Eiholzer et al.)",
+  "start_url": "./Wachstumskurven.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f1420",
+  "theme_color": "#2b3e73",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
